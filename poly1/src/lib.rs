@@ -448,6 +448,7 @@ impl Part for Quaternion {}
 pub struct FormatComplexity {
     /// The estimated number of triangles.
     #[serde(rename="triangleCount")]
+    #[serde(default, deserialize_with="from_str_optional")]
     pub triangle_count: Option<i64>,
     /// A non-negative integer that represents the level of detail (LOD) of this
     /// format relative to other formats of the same asset with the same
@@ -456,6 +457,23 @@ pub struct FormatComplexity {
     /// least-detailed (integers greater than 0).
     #[serde(rename="lodHint")]
     pub lod_hint: Option<i32>,
+}
+
+// TODO: manual temp workaround for i64/u64 as strings https://github.com/Byron/google-apis-rs/issues/211
+use std::fmt::Display;
+use std::str::FromStr;
+use serde::de::{self, Deserialize, Deserializer};
+
+fn from_str_optional<'de, T, D>(deserializer: D) -> serde::export::Result<Option<T>, D::Error>
+    where T: FromStr,
+          T::Err: Display,
+          D: serde::Deserializer<'de>
+{
+    match serde::Deserialize::deserialize(deserializer) {
+        Ok(json::Value::String(s)) => T::from_str(&s).map_err(serde::de::Error::custom).map(Option::from),
+        Ok(_v) => Ok(None),
+        Err(_) => Ok(None)
+    }
 }
 
 impl Part for FormatComplexity {}
